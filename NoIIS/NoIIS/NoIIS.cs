@@ -63,7 +63,7 @@ namespace NoIIS
 						var foundHandler = false;
 						foreach(var factory in NoIIS.factories)
 						{
-							var handler = factory.GetHandler(webContext, request.RequestType, request.RawUrl, string.Empty);
+							var handler = factory.GetHandler(webContext, request.RequestType, request.Path, string.Empty);
 							if(handler != null)
 							{
 								handler.ProcessRequest(webContext);

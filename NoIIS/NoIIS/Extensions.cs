@@ -23,13 +23,13 @@ namespace NoIIS
 			// Case #1: Just a form
 			//		Content Type = application/x-www-form-urlencoded
 			//		Body = MAX_FILE_SIZE=100000&t%C3%A4stValue=das+ist+ein+test
-			if(request.ContentType == "application/x-www-form-urlencoded")
+			if(request.ContentType.Contains("application/x-www-form-urlencoded"))
 			{
 				using(var inputStream = request.InputStream)
 				{
 					using(var reader = new StreamReader(inputStream))
 					{
-						return reader.ReadToEnd().GetQueryString();
+						return reader.ReadToEnd().GetQueryString(true);
 					}
 				}
 			}
@@ -115,6 +115,11 @@ namespace NoIIS
 			//		
 			//		ein@test.deasdasdsa
 			//		------WebKitFormBoundaryeghC9TqseFEkpCXg--
+			
+			if(!request.ContentType.Contains("multipart/form-data; boundary="))
+			{
+				return new NameValueCollection();
+			}
 			
 			// Expect a huge amount of data (GBs or more)!
 			var tempFile = tempFolder + tempFilename;
@@ -258,6 +263,11 @@ namespace NoIIS
 			//		ein@test.deasdasdsa
 			//		------WebKitFormBoundaryeghC9TqseFEkpCXg--
 			
+			if(!request.ContentType.Contains("multipart/form-data; boundary="))
+			{
+				return null;
+			}
+			
 			// Expect a huge amount of data (GBs or more)!
 			var tempFile = tempFolder + tempFilename;
 			if(!File.Exists(tempFile))
@@ -298,7 +308,7 @@ namespace NoIIS
 			}
 		}
 		
-		public static NameValueCollection GetQueryString(this string data)
+		public static NameValueCollection GetQueryString(this string data, bool is4FormData = false)
 		{
 			var result = new NameValueCollection();
 			if(data == null || data == string.Empty)
@@ -307,12 +317,24 @@ namespace NoIIS
 			}
 			
 			var elements = data.Split('?');
-			if(elements.Length < 2)
+			var argsRaw = string.Empty;
+			
+			if(!is4FormData)
 			{
-				return result;
+				// Case: For GET params (should contain a '?')
+				if(elements.Length < 2)
+				{
+					return result;
+				}
+				
+				argsRaw = elements[1];
+			}
+			else
+			{
+				// Case: For form data (should not contain a '?')
+				argsRaw = data;
 			}
 			
-			var argsRaw = elements[1];
 			var args = argsRaw.Split('&');
 			foreach(var a in args)
 			{
