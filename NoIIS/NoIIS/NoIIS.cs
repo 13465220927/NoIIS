@@ -28,7 +28,7 @@ namespace NoIIS
 			}
 			
 			NoIIS.assembly = args[0].Trim();
-			NoIIS.tempFolder = args[1].EndsWith(string.Empty + Path.DirectorySeparatorChar) ? args[0] : args[0] + Path.DirectorySeparatorChar;
+			NoIIS.tempFolder = args[1].EndsWith(string.Empty + Path.DirectorySeparatorChar) ? args[1] : args[1] + Path.DirectorySeparatorChar;
 			NoIIS.maxRequestSizeBytes = int.Parse(args[2]);
 			NoIIS.hosts = args.Skip(3).ToArray();
 			NoIIS.factories = FindHttpHandlerFactories.findFactories(NoIIS.assembly);
@@ -97,7 +97,7 @@ namespace NoIIS
 				    catch(Exception e)
 				    {
 				    	Console.WriteLine("Exception while processing request: {0}", e.Message);
-				    	Console.Write(e.StackTrace);
+				    	Console.WriteLine(e.StackTrace);
 				    	
 				    	try
 				    	{
