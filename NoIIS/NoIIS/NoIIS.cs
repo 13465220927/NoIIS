@@ -18,7 +18,7 @@ namespace NoIIS
 		{
 			if(args.Length < 4)
 			{
-				Console.WriteLine("Please provide at least three arguments:");
+				Console.WriteLine("Please provide at least four arguments:");
 				Console.WriteLine("   1.  The assembly containing the handler factories e.g. 'my-app.dll'");
 				Console.WriteLine("   2.  The temp. folder for uploaded files as cache for the processing");
 				Console.WriteLine("   3.  The max. request size (bytes)");
