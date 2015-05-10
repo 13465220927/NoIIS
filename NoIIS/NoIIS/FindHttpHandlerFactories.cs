@@ -16,19 +16,19 @@ namespace NoIIS
 				var interfaces = type.GetInterfaces();
 				foreach(var iface in interfaces)
 				{
-					Console.WriteLine(string.Format("Found interface '{0}' inside of '{1}'.", iface.FullName, type.FullName));
+					Console.WriteLine("Found interface '{0}' inside of '{1}'.", iface.FullName, type.FullName);
 					if(iface.FullName == "NoIIS.IHttpHandlerBaseFactory")
 					{
 						var constructor = type.GetConstructor(new Type[0]);
 						var obj = constructor.Invoke(null);
 						result.Add(obj as IHttpHandlerBaseFactory);
-						Console.WriteLine(string.Format("Handler factory found: '{0}'", type.FullName));
+						Console.WriteLine("Handler factory found: '{0}'", type.FullName);
 						break;
 					}
 				}
 			}
 			
-			Console.WriteLine(string.Format("Found {0} handler factories.", result.Count));
+			Console.WriteLine("Found {0} handler factories.", result.Count);
 			Console.WriteLine();
 			return result.ToArray();
 		}

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Net;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Linq;
 
@@ -37,6 +38,7 @@ namespace NoIIS
 		
 		private static void runner()
 		{
+			ThreadPool.SetMinThreads(100, 100);
 			var listener = new HttpListener();
 			NoIIS.hosts.ToList().ForEach((n) => {listener.Prefixes.Add(n); Console.WriteLine(n);});
 			listener.Start();
@@ -46,7 +48,7 @@ namespace NoIIS
 				var context = listener.GetContext();
 				if(context.Request.ContentLength64 > NoIIS.maxRequestSizeBytes)
 				{
-					Console.Write("A request was to huge: {0} bytes.", context.Request.ContentLength64);
+					Console.WriteLine("A request was to huge: {0} bytes.", context.Request.ContentLength64);
 					context.Response.Abort();
 					continue;
 				}
@@ -74,7 +76,7 @@ namespace NoIIS
 						
 						if(!foundHandler)
 						{
-							Console.WriteLine(string.Format("No handler found for the URL '{0}'.", request.RawUrl));
+							Console.WriteLine("No handler found for the URL '{0}'.", request.RawUrl);
 							response.StatusCode = 404;
 						}
 						
