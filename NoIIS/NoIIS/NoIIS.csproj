@@ -58,6 +58,8 @@
     <Compile Include="IHttpHandlerBaseFactory.cs" />
     <Compile Include="NoIIS.cs" />
     <Compile Include="NoIISContext.cs" />
+    <Compile Include="NoIISFileCollection.cs" />
+    <Compile Include="NoIISPostedFile.cs" />
     <Compile Include="NoIISRequest.cs" />
     <Compile Include="NoIISResponse.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

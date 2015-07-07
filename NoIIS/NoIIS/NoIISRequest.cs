@@ -7,6 +7,11 @@ using System.Net;
 
 namespace NoIIS
 {
+	/// <summary>
+	/// This is a class for a web server request which is compatible to the IIS. Normally, you dont need
+	/// to create an object by your own. NoIIS will handle this for you. This class is not thread-safe.
+	/// Please use it only at one thread at a time!
+	/// </summary>
 	public class NoIISRequest : HttpRequestBase, IDisposable
 	{
 		private string[] acceptTypes = new string[0];
@@ -38,6 +43,12 @@ namespace NoIIS
 		private string tmpFolder = string.Empty;
 		private HttpListenerContext context = null;
 		
+		/// <summary>
+		/// The constructor for this class. Normally, you dont have to use it by your own.
+		/// NoIIS will handle it for you.
+		/// </summary>
+		/// <param name="context">The HTTP listener context.</param>
+		/// <param name="tempFolder">A temporary folder for this request. It will be used e.g. for uploaded files.</param>
 		public NoIISRequest(HttpListenerContext context, string tempFolder)
 		{
 			/*
@@ -105,6 +116,9 @@ namespace NoIIS
 			this.parameters = this.QueryString.Merge(this.Form);
 		}
 
+		/// <summary>
+		/// This class is disposable.
+		/// </summary>
 		public void Dispose()
 		{
 			try
@@ -124,6 +138,9 @@ namespace NoIIS
 			}
 		}
 	
+		/// <summary>
+		/// Gets all the files, which are uploaded by the client.
+		/// </summary>
 		public override HttpFileCollectionBase Files
 		{
 			get
@@ -132,6 +149,9 @@ namespace NoIIS
 			}
 		}
 		
+		/// <summary>
+		/// Gets all languages of the client.
+		/// </summary>
 		public override string[] UserLanguages
 		{
 			get
@@ -140,6 +160,9 @@ namespace NoIIS
 			}
 		}
 		
+		/// <summary>
+		/// Gets the hostname of the client.
+		/// </summary>
 		public override string UserHostName
 		{
 			get
@@ -148,6 +171,9 @@ namespace NoIIS
 			}
 		}
 		
+		/// <summary>
+		/// Gets the address of the client.
+		/// </summary>
 		public override string UserHostAddress
 		{
 			get
@@ -156,6 +182,9 @@ namespace NoIIS
 			}
 		}
 		
+		/// <summary>
+		/// Gets the user agent of the client.
+		/// </summary>
 		public override string UserAgent
 		{
 			get
@@ -164,6 +193,9 @@ namespace NoIIS
 			}
 		}
 		
+		/// <summary>
+		/// Gets the called URL.
+		/// </summary>
 		public override Uri Url
 		{
 			get
@@ -172,6 +204,9 @@ namespace NoIIS
 			}
 		}
 		
+		/// <summary>
+		/// Gets the referrer.
+		/// </summary>
 		public override Uri UrlReferrer
 		{
 			get
@@ -180,6 +215,9 @@ namespace NoIIS
 			}
 		}
 		
+		/// <summary>
+		/// Gets the total amount of bytes of this request.
+		/// </summary>
 		public override int TotalBytes
 		{
 			get
@@ -188,6 +226,9 @@ namespace NoIIS
 			}
 		}
 		
+		/// <summary>
+		/// Gets all parameters which are passed by using the GET method i.e. passed as query string.
+		/// </summary>
 		public override NameValueCollection QueryString
 		{
 			get
@@ -196,6 +237,9 @@ namespace NoIIS
 			}
 		}
 		
+		/// <summary>
+		/// Gets all header fields of the request.
+		/// </summary>
 		public override NameValueCollection Headers
 		{
 			get
@@ -204,6 +248,9 @@ namespace NoIIS
 			}
 		}
 		
+		/// <summary>
+		/// Gets the path of this request.
+		/// </summary>
 		public override string Path
 		{
 			get
@@ -212,6 +259,9 @@ namespace NoIIS
 			}
 		}
 		
+		/// <summary>
+		/// Gets the raw path of this request.
+		/// </summary>
 		public override string RawUrl
 		{
 			get
@@ -220,6 +270,9 @@ namespace NoIIS
 			}
 		}
 		
+		/// <summary>
+		/// Gets the path info for this request.
+		/// </summary>
 		public override string PathInfo
 		{
 			get
@@ -228,6 +281,9 @@ namespace NoIIS
 			}
 		}
 		
+		/// <summary>
+		/// Returns true, if the request was using SSL/TLS.
+		/// </summary>
 		public override bool IsSecureConnection
 		{
 			get
@@ -252,6 +308,9 @@ namespace NoIIS
 			}
 		}
 		
+		/// <summary>
+		/// Gets the HTTP method e.g. GET, POST, etc.
+		/// </summary>
 		public override string HttpMethod
 		{
 			get
@@ -260,6 +319,9 @@ namespace NoIIS
 			}
 		}
 		
+		/// <summary>
+		/// Gets the HTTP method e.g. GET, POST, etc.
+		/// </summary>
 		public override string RequestType
 		{
 			get
@@ -268,6 +330,9 @@ namespace NoIIS
 			}
 		}
 		
+		/// <summary>
+		/// Gets the input stream from the client, to read the body of this request.
+		/// </summary>
 		public override Stream InputStream
 		{
 			get
@@ -290,21 +355,33 @@ namespace NoIIS
 			}
 		}
 		
+		/// <summary>
+		/// Gets the input stream from the client, to read the body of this request.
+		/// </summary>
 		public override Stream GetBufferedInputStream()
 		{
 			return this.inputStream;
 		}
 		
+		/// <summary>
+		/// Gets the input stream from the client, to read the body of this request.
+		/// </summary>
 		public override Stream GetBufferlessInputStream()
 		{
 			return this.inputStream;
 		}
 		
+		/// <summary>
+		/// Gets the input stream from the client, to read the body of this request.
+		/// </summary>
 		public override Stream GetBufferlessInputStream(bool disableMaxRequestLength)
 		{
 			return this.inputStream;
 		}
 		
+		/// <summary>
+		/// Gets all parameters of this request, does not matter from where (query string, form values).
+		/// </summary>
 		public override NameValueCollection Params
 		{
 			get
@@ -313,6 +390,9 @@ namespace NoIIS
 			}
 		}
 		
+		/// <summary>
+		/// Gets all parameters of this request from the form values.
+		/// </summary>
 		public override NameValueCollection Form
 		{
 			get
@@ -321,6 +401,9 @@ namespace NoIIS
 			}
 		}
 		
+		/// <summary>
+		/// Gets the file path of this request.
+		/// </summary>
 		public override string FilePath
 		{
 			get
@@ -329,6 +412,9 @@ namespace NoIIS
 			}
 		}
 		
+		/// <summary>
+		/// Gets the content type of this request.
+		/// </summary>
 		public override string ContentType
 		{
 			get
@@ -337,6 +423,9 @@ namespace NoIIS
 			}
 		}
 		
+		/// <summary>
+		/// Gets the types which the client accepts.
+		/// </summary>
 		public override string[] AcceptTypes
 		{
 			get
@@ -345,6 +434,9 @@ namespace NoIIS
 			}
 		}
 		
+		/// <summary>
+		/// Gets the content encoding for this request.
+		/// </summary>
 		public override Encoding ContentEncoding
 		{
 			get
@@ -353,6 +445,9 @@ namespace NoIIS
 			}
 		}
 		
+		/// <summary>
+		/// Gets the content length of this request.
+		/// </summary>
 		public override int ContentLength
 		{
 			get
@@ -361,6 +456,9 @@ namespace NoIIS
 			}
 		}
 		
+		/// <summary>
+		/// Gets all cookies from this request.
+		/// </summary>
 		public override HttpCookieCollection Cookies
 		{
 			get

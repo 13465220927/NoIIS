@@ -7,11 +7,21 @@ using System.Net;
 
 namespace NoIIS
 {
+	/// <summary>
+	/// This is a class for a web server response which is compatible to the IIS. Normally, you dont need
+	/// to create an object by your own. NoIIS will handle this for you. This class is not thread-safe.
+	/// Please use it only at one thread at a time! 
+	/// </summary>
 	public class NoIISResponse : HttpResponseBase, IDisposable
 	{
 		private HttpListenerResponse response = null;
 		private StreamWriter writer = null;
 		
+		/// <summary>
+		/// The constructor for this class. Normally, you dont have to use these by your own.
+		/// NoIIS will handle it for you.
+		/// </summary>
+		/// <param name="context">The HTTP listener context.</param>
 		public NoIISResponse(HttpListenerContext context) : base()
 		{
 			/*
@@ -26,11 +36,17 @@ namespace NoIIS
 			this.writer = new StreamWriter(this.response.OutputStream);
 		}
 
+		/// <summary>
+		/// The instance of this class is disposable.
+		/// </summary>
 		public void Dispose()
 		{
 			this.Flush();
 		}
 	
+		/// <summary>
+		/// The flush method which overrides HttpResponseBase's method.
+		/// </summary>
 		public override void Flush()
 		{
 			try
@@ -50,6 +66,11 @@ namespace NoIIS
 			}
 		}
 		
+		/// <summary>
+		/// The WriteFile method which overrides HttpResponseBase's method. Uploads a local file
+		/// to the client.
+		/// </summary>
+		/// <param name="filename">The local filename which you want to upload.</param>
 		public override void WriteFile(string filename)
 		{
 			if(filename == null)
@@ -68,6 +89,9 @@ namespace NoIIS
 			}
 		}
 		
+		/// <summary>
+		/// Gets the Headers of this response. Overrides HttpResponseBase's method.
+		/// </summary>
 		public override NameValueCollection Headers
 		{
 			get
@@ -82,6 +106,9 @@ namespace NoIIS
 			}
 		}
 		
+		/// <summary>
+		/// Get or sets the redirect location.
+		/// </summary>
 		public override string RedirectLocation
 		{
 			get
@@ -95,11 +122,19 @@ namespace NoIIS
 			}
 		}
 		
+		/// <summary>
+		/// The Redirect method which overrides HttpResponseBase's method. Redirects the client
+		/// to the given URL.
+		/// </summary>
+		/// <param name="url">The url where the client should be redirected.</param>
 		public override void Redirect(string url)
 		{
 			this.response.Redirect(url);
 		}
 		
+		/// <summary>
+		/// Gets or sets the cookies for this response.
+		/// </summary>
 		public new HttpCookieCollection Cookies
 		{
 			get
@@ -125,6 +160,9 @@ namespace NoIIS
 			}
 		}
 		
+		/// <summary>
+		/// Gets or sets the content encoding for this response.
+		/// </summary>
 		public override Encoding ContentEncoding
 		{
 			get
@@ -138,31 +176,55 @@ namespace NoIIS
 			}
 		}
 		
+		/// <summary>
+		/// The Close method which overrides HttpResponseBase's method.
+		/// </summary>
 		public override void Close()
 		{
 			this.response.Close();
 		}
 		
+		/// <summary>
+		/// Sets a cookie for this response.
+		/// </summary>
+		/// <param name="cookie"></param>
 		public override void SetCookie(HttpCookie cookie)
 		{
 			this.response.SetCookie(new Cookie(cookie.Name, cookie.Value, cookie.Path, cookie.Domain));
 		}
 		
+		/// <summary>
+		/// Appends a cookie to this response.
+		/// </summary>
+		/// <param name="cookie"></param>
 		public override void AppendCookie(HttpCookie cookie)
 		{
 			this.response.AppendCookie(new Cookie(cookie.Name, cookie.Value, cookie.Path, cookie.Domain));
 		}
 		
+		/// <summary>
+		/// Appends a header field to this response.
+		/// </summary>
+		/// <param name="name">The field's name.</param>
+		/// <param name="value">The field's value.</param>
 		public override void AppendHeader(string name, string value)
 		{
 			this.response.AppendHeader(name, value);
 		}
 		
+		/// <summary>
+		/// Adds a header field to this response.
+		/// </summary>
+		/// <param name="name">The field's name.</param>
+		/// <param name="value">The field's value.</param>
 		public override void AddHeader(string name, string value)
 		{
 			this.response.AddHeader(name, value);
 		}
 		
+		/// <summary>
+		/// Gets or sets the status code for this response.
+		/// </summary>
 		public override int StatusCode
 		{
 			get
@@ -176,6 +238,9 @@ namespace NoIIS
 			}
 		}
 		
+		/// <summary>
+		/// Gets or sets the TextWriter for this response. This enables you to write text data to the client.
+		/// </summary>
 		public override TextWriter Output
 		{
 			get
@@ -189,6 +254,9 @@ namespace NoIIS
 			}
 		}
 		
+		/// <summary>
+		/// Gets the stream to the client side. Enables you to write any kind of data to the client.
+		/// </summary>
 		public override Stream OutputStream
 		{
 			get
@@ -197,6 +265,9 @@ namespace NoIIS
 			}
 		}
 		
+		/// <summary>
+		/// Gets or sets the content type.
+		/// </summary>
 		public override string ContentType
 		{
 			get
