@@ -1,2 +1,2 @@
 # NoIIS
-NoIIS is a lightweight C# web server for IHttpHandlerFactory and IHttpHandler
+NoIIS is a lightweight C# web server for the `IHttpHandlerFactory` and `IHttpHandler` to avoid the huge and heavy IIS web server for some cases. Code for NoIIS is compatible with the IIS, if you utilise the build-in interfaces `IHttpHandlerBaseFactory` and `IHttpHandlerBase`. You can study an example here to get the main points: https://github.com/SommerEngineering/Example002.
