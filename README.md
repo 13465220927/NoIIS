@@ -3,32 +3,32 @@ NoIIS is a lightweight C# web server for the `IHttpHandlerFactory` and `IHttpHan
 
 ## Limits
 NoIIS is not yet a full replacement for an ISS. The following properties of the `HttpRequestBase` class are not yet implemented:
-* - AnonymousID
-* - ApplicationPath
-* - AppRelativeCurrentExecutionFilePath
-* - Browser
-* - ClientCertificate
-* - CurrentExecutionFilePath
-* - CurrentExecutionFilePathExtension
-* - Filter
-* - HttpChannelBinding
-* - LogonUserIdentity
-* - PhysicalApplicationPath
-* - PhysicalPath
-* - ReadEntityBodyMode
-* - RequestContext
-* - ServerVariables
-* - TimedOutToken
-* - Unvalidated
+* AnonymousID
+* ApplicationPath
+* AppRelativeCurrentExecutionFilePath
+* Browser
+* ClientCertificate
+* CurrentExecutionFilePath
+* CurrentExecutionFilePathExtension
+* Filter
+* HttpChannelBinding
+* LogonUserIdentity
+* PhysicalApplicationPath
+* PhysicalPath
+* ReadEntityBodyMode
+* RequestContext
+* ServerVariables
+* TimedOutToken
+* Unvalidated
 
 Further, the following methods of the `HttpRequestBase` class are not yet implemented:
-* - BinaryRead()
-* - InsertEntityBody()
-* - MapImageCoordinates()
-* - MapPath()
-* - MapRawImageCoordinates()
-* - SaveAs()
-* - ToString()
-* - ValidateInput()
+* BinaryRead()
+* InsertEntityBody()
+* MapImageCoordinates()
+* MapPath()
+* MapRawImageCoordinates()
+* SaveAs()
+* ToString()
+* ValidateInput()
 
 For many projects, these missing methods and properties are not relevant. If you have an issue, please consider if your code tries to use any of these.
