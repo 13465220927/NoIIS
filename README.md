@@ -1,5 +1,5 @@
 # NoIIS
-NoIIS is a lightweight C# web server for the `IHttpHandlerFactory` and `IHttpHandler` to avoid the huge and heavy IIS web server for some cases. Projects for NoIIS are compatible with the IIS if you utilise the build-in interfaces `IHttpHandlerBaseFactory` and `IHttpHandlerBase`. You can study an example here to get the main points: https://github.com/SommerEngineering/Example002. NoIIS works with .NET on Microsoft Windows and also with Mono on Unix, Linux and Mac OS X.
+NoIIS is a lightweight C# web server for the `IHttpHandlerFactory` and `IHttpHandler` to avoid the huge and heavy IIS web server for some cases. Projects for NoIIS are compatible with the IIS if you utilise the build-in interfaces `IHttpHandlerBaseFactory` and `IHttpHandlerBase`. You can study examples to get the main points: Example002 about how to use the NoIIS as stand-alone server (https://github.com/SommerEngineering/Example002) and example004 about how to set-up and run the NoIIS server directly from your code (https://github.com/SommerEngineering/Example004). NoIIS works with .NET on Microsoft Windows and also with Mono on Unix, Linux and Mac OS X.
 
 ## Limits
 NoIIS is not yet a full replacement for an ISS. The following properties of the `HttpRequestBase` class are not yet implemented:
