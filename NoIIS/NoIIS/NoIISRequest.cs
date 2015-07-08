@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
 using System.Text;
@@ -39,9 +40,13 @@ namespace NoIIS
 		private string userHostName = string.Empty;
 		private string[] userLanguages = new string[0];
 		private HttpFileCollectionBase files = null;
-		private string tmpFilename = Guid.NewGuid().ToString();
-		private string tmpFolder = string.Empty;
+		private string tmpRequestTMPFolder = Guid.NewGuid().ToString(); // The tmp. folder name for this request
+		private string tmpRequestTMPFolderPATH = string.Empty; // The tmp. folder's path for this request
+		private bool tmpRequestFileCreated = false; // Was the tmp. file created?
+		private string tmpFolder = string.Empty; // The global tmp. folder for the server
+		private string tmpRequestTMPFilePATH = string.Empty; // The tmp. file for this request's body
 		private HttpListenerContext context = null;
+		private List<Stream> probablyOpenStreams = new List<Stream>();
 		
 		/// <summary>
 		/// The constructor for this class. Normally, you dont have to use it by your own.
@@ -84,6 +89,7 @@ namespace NoIIS
 			
 			this.context = context;
 			this.tmpFolder = tempFolder;
+			this.inputStream = this.InputStream; // Creates the unique tmp. file for this request and propagates the tmp* variables
 			this.acceptTypes = context.Request.AcceptTypes;
 			this.contentEncoding = context.Request.ContentEncoding;
 			this.contentLength = (int)context.Request.ContentLength64;
@@ -99,7 +105,6 @@ namespace NoIIS
 			this.pathInfo = context.Request.Url.PathInfo();
 			this.path = context.Request.Url.LocalPath;
 			this.queryString = context.Request.RawUrl.GetQueryString();
-			this.inputStream = null;
 			this.headers = context.Request.Headers;
 			this.httpMethod = context.Request.HttpMethod;
 			this.isAuthenticated = context.Request.IsAuthenticated;
@@ -111,8 +116,8 @@ namespace NoIIS
 			this.userHostAddress = context.Request.UserHostAddress;
 			this.userHostName = context.Request.UserHostName;
 			this.userLanguages = context.Request.UserLanguages;
-			this.files = context.Request.GetFiles(tempFolder, this.tmpFilename);
-			this.form = context.Request.GetForm(tempFolder, this.tmpFilename);
+			this.files = context.Request.GetFiles(this.InputStream, this.tmpRequestTMPFolderPATH, this);
+			this.form = context.Request.GetForm(this.InputStream);
 			this.parameters = this.QueryString.Merge(this.Form);
 		}
 
@@ -121,6 +126,7 @@ namespace NoIIS
 		/// </summary>
 		public void Dispose()
 		{
+			// Close the init. stream:
 			try
 			{
 				this.inputStream.Dispose();
@@ -129,9 +135,27 @@ namespace NoIIS
 			{
 			}
 			
+			// Try to close all probably open streams:
+			if(this.probablyOpenStreams != null)
+			{
+				foreach(var probablyOpenStream in this.probablyOpenStreams)
+				{
+					try
+					{
+						probablyOpenStream.Dispose();
+					}
+					catch
+					{
+					}
+				}
+				
+				this.probablyOpenStreams.Clear();
+			}
+			
+			// Try to delete all tmp. files:
 			try
 			{
-				File.Delete(this.tmpFolder + this.tmpFilename);
+				Directory.Delete(this.tmpRequestTMPFolderPATH, true);
 			}
 			catch
 			{
@@ -337,21 +361,42 @@ namespace NoIIS
 		{
 			get
 			{
-				if(this.inputStream == null)
+				// Is the tmp. file already created?
+				if(!this.tmpRequestFileCreated)
 				{
-					var tmpFile = this.tmpFolder + this.tmpFilename;
+					// Generate the tmp. folder name for this request:
+					this.tmpRequestTMPFolderPATH = this.tmpFolder + this.tmpRequestTMPFolder + global::System.IO.Path.DirectorySeparatorChar;
+					
+					// Create the folder:
+					try
+					{
+						Directory.CreateDirectory(this.tmpRequestTMPFolderPATH);
+					}
+					catch(Exception e)
+					{
+						Console.WriteLine("Exception while creating the temporary folder '{1}' for the request: {0}", e.Message, this.tmpRequestTMPFolderPATH);
+					   	Console.WriteLine(e.StackTrace);
+					   	this.tmpRequestFileCreated = false;
+					   	return new MemoryStream(new byte[0], false);
+					}
+					
+					// Generate the tmp. file name:
+					this.tmpRequestTMPFilePATH = this.tmpRequestTMPFolderPATH + Guid.NewGuid().ToString();
 					using(var inputStream = this.context.Request.InputStream)
 					{
-						using(var fileStream = File.OpenWrite(tmpFile))
+						using(var fileStream = File.OpenWrite(this.tmpRequestTMPFilePATH))
 						{
 							inputStream.CopyTo(fileStream);
 						}
 					}
 					
-					this.inputStream = File.OpenRead(tmpFile);
+					this.tmpRequestFileCreated = true;
 				}
 				
-				return this.inputStream;
+				// Return a fresh stream to the body:
+				var stream = File.OpenRead(this.tmpRequestTMPFilePATH);
+				this.AddProbablyOpenStream(stream);
+				return stream;
 			}
 		}
 		
@@ -360,7 +405,7 @@ namespace NoIIS
 		/// </summary>
 		public override Stream GetBufferedInputStream()
 		{
-			return this.inputStream;
+			return this.InputStream;
 		}
 		
 		/// <summary>
@@ -368,7 +413,7 @@ namespace NoIIS
 		/// </summary>
 		public override Stream GetBufferlessInputStream()
 		{
-			return this.inputStream;
+			return this.InputStream;
 		}
 		
 		/// <summary>
@@ -376,7 +421,7 @@ namespace NoIIS
 		/// </summary>
 		public override Stream GetBufferlessInputStream(bool disableMaxRequestLength)
 		{
-			return this.inputStream;
+			return this.InputStream;
 		}
 		
 		/// <summary>
@@ -464,6 +509,18 @@ namespace NoIIS
 			get
 			{
 				return this.cookies;
+			}
+		}
+		
+		/// <summary>
+		/// Add another stream which we should close at the dispose time.
+		/// </summary>
+		/// <param name="probablyOpenStream">The stream.</param>
+		internal void AddProbablyOpenStream(Stream probablyOpenStream)
+		{
+			if(probablyOpenStream != null)
+			{
+				this.probablyOpenStreams.Add(probablyOpenStream);
 			}
 		}
 	}
