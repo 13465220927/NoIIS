@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Threading;
@@ -11,7 +12,7 @@ namespace NoIIS
 	/// This main class for the NoIIS web server. You dont need to use this class inside your projects while development.
 	/// Instead, this class provides the Main method for the web server, which you will use at the deploy time.
 	/// </summary>
-	public static class NoIIS
+	public static class NoIISServer
 	{
 		// The temporary folder for e.g. file uploads of clients, etc.
 		private static string tempFolder = string.Empty;
@@ -45,18 +46,57 @@ namespace NoIIS
 				return;
 			}
 			
-			NoIIS.assembly = args[0].Trim();
-			NoIIS.tempFolder = args[1].EndsWith(string.Empty + Path.DirectorySeparatorChar) ? args[1] : args[1] + Path.DirectorySeparatorChar;
-			NoIIS.maxRequestSizeBytes = int.Parse(args[2]);
-			NoIIS.hosts = args.Skip(3).ToArray();
-			NoIIS.factories = FindHttpHandlerFactories.findFactories(NoIIS.assembly);
-			NoIIS.runner();
+			NoIISServer.assembly = args[0].Trim();
+			NoIISServer.tempFolder = args[1].EndsWith(string.Empty + Path.DirectorySeparatorChar) ? args[1] : args[1] + Path.DirectorySeparatorChar;
+			NoIISServer.maxRequestSizeBytes = int.Parse(args[2]);
+			NoIISServer.hosts = args.Skip(3).ToArray();
+			NoIISServer.factories = FindHttpHandlerFactories.findFactories(NoIISServer.assembly);
+			NoIISServer.runner();
+		}
+
+		/// <summary>
+		/// Setup the NoIIS envirnonment instead of using the NoIIS.exe. After setup, please call runner() to start the server.
+		/// </summary>
+		/// <param name="factories">Your factories which provides all of your handlers. You must provide at least one factory in order to use NoIIS.</param>
+		/// <param name="tempFolderPath">The already existing temporary directory for e.g. file uploads, etc. If you use an empty string, the server will create a directory at the current working directory.</param>
+		/// <param name="maxRequestSizeBytes">The max. request size (bytes) for every request. This parameter limits e.g. file uploads. Default: approx. 5 MB</param>
+		/// <param name="host">The host and port where the web server will receive requests. Default: http://127.0.0.1:50000/</param>
+		/// <param name="hosts">Instead of using one host, you can provide here several hosts. If you use this parameter, NoIIS will ignore the host parameter.</param>
+		public static void setup(IEnumerable<IHttpHandlerBaseFactory> factories, string tempFolderPath = "", int maxRequestSizeBytes = 5000000, string host = "http://127.0.0.1:50000/", IEnumerable<string> hosts = null)
+		{
+			// Store the factories:
+			NoIISServer.factories = factories.ToArray();
+			
+			// Store the max. size:
+			NoIISServer.maxRequestSizeBytes = maxRequestSizeBytes;
+			
+			// Store the host or hosts:
+			NoIISServer.hosts = hosts != null ? hosts.ToArray() : new string[] { host };
+			
+			// Provides a temp. folder?
+			if(tempFolderPath == null || tempFolderPath == string.Empty)
+			{
+				// Case: No path provided!
+				var currentWorkingDIR = Environment.CurrentDirectory;
+				NoIISServer.tempFolder = currentWorkingDIR.EndsWith(string.Empty + Path.DirectorySeparatorChar) ? currentWorkingDIR : currentWorkingDIR + Path.DirectorySeparatorChar;
+				
+				try
+				{
+					Directory.CreateDirectory(NoIISServer.tempFolder);
+				}
+				catch
+				{
+				}
+			} else {
+				// Case: Path was provided!
+				NoIISServer.tempFolder = tempFolderPath.EndsWith(string.Empty + Path.DirectorySeparatorChar) ? tempFolderPath : tempFolderPath + Path.DirectorySeparatorChar;
+			}
 		}
 		
 		/// <summary>
 		/// The main-thread of NoIIS where all client requests are arrives.
 		/// </summary>
-		private static void runner()
+		public static void runner()
 		{
 			// Set the min. number of threads for the thread-pool:
 			ThreadPool.SetMinThreads(100, 100);
@@ -65,7 +105,7 @@ namespace NoIIS
 			var listener = new HttpListener();
 			
 			// Add all hosts to the listener as end-points:
-			NoIIS.hosts.ToList().ForEach((n) => {listener.Prefixes.Add(n); Console.WriteLine(n);});
+			NoIISServer.hosts.ToList().ForEach((n) => {listener.Prefixes.Add(n); Console.WriteLine(n);});
 			
 			// Start listening:
 			listener.Start();
@@ -79,7 +119,7 @@ namespace NoIIS
 					var context = listener.GetContext();
 					
 					// Filter-out any requests which are to huge:
-					if(context.Request.ContentLength64 > NoIIS.maxRequestSizeBytes)
+					if(context.Request.ContentLength64 > NoIISServer.maxRequestSizeBytes)
 					{
 						Console.WriteLine("A request was to huge: {0} bytes.", context.Request.ContentLength64);
 						context.Response.Abort();
@@ -96,7 +136,7 @@ namespace NoIIS
 					    try
 					    {
 					    	// Create the NoIIS request:
-							var request = new NoIISRequest(innerContext, NoIIS.tempFolder);
+							var request = new NoIISRequest(innerContext, NoIISServer.tempFolder);
 							
 							// Create the NoIIS response:
 							var response = new NoIISResponse(innerContext);
@@ -106,7 +146,7 @@ namespace NoIIS
 							
 							// Search for a handler inside all factories which matches the request:
 							var foundHandler = false;
-							foreach(var factory in NoIIS.factories)
+							foreach(var factory in NoIISServer.factories)
 							{
 								// Does this factory is able to deliver a handler for this request?
 								var handler = factory.GetHandler(webContext, request.RequestType, request.Path, string.Empty);
