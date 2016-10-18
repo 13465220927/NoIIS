@@ -25,7 +25,6 @@ NoIIS is not yet a full replacement for an ISS. The following properties of the 
 * Unvalidated
 
 Further, the following methods of the `HttpRequestBase` class are not yet implemented:
-* BinaryRead()
 * InsertEntityBody()
 * MapImageCoordinates()
 * MapPath()

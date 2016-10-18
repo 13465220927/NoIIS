@@ -77,7 +77,6 @@ namespace NoIIS
 			 * - Unvalidated
 			 * 
 			 * TODO Missing methods:
-			 * - BinaryRead()
 			 * - InsertEntityBody()
 			 * - MapImageCoordinates()
 			 * - MapPath()
@@ -353,11 +352,43 @@ namespace NoIIS
 				return this.httpMethod;
 			}
 		}
-		
-		/// <summary>
-		/// Gets the input stream from the client, to read the body of this request.
-		/// </summary>
-		public override Stream InputStream
+
+        /// <summary>
+        /// Read count number of bytes of the request and returns the byte array.
+        /// </summary>
+        /// <param name="count">The number of bytes to read.</param>
+        /// <returns>The byte array.</returns>
+        public override byte[] BinaryRead(int count)
+        {
+            if(count < 1) {
+                return new byte[0];
+            }
+
+            var data = new byte[count];
+            if(count > this.ContentLength)
+            {
+                count = this.ContentLength;
+            }
+
+            try
+            {
+                using(var inputStream = this.InputStream)
+                {
+                    inputStream.Read(data, 0, count);
+                }
+
+                return data;
+            }
+            catch
+            {
+                return data;
+            }
+        }
+
+        /// <summary>
+        /// Gets the input stream from the client, to read the body of this request.
+        /// </summary>
+        public override Stream InputStream
 		{
 			get
 			{
