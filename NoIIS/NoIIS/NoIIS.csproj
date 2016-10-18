@@ -48,8 +48,9 @@
     <StartAction>Project</StartAction>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="HttpMultipartParser">
-      <HintPath>..\packages\HttpMultipartParser.1.1.5\lib\net40\HttpMultipartParser.dll</HintPath>
+    <Reference Include="HttpMultipartParser, Version=2.1.5.0, Culture=neutral, PublicKeyToken=6d293681fa6c7a03, processorArchitecture=MSIL">
+      <HintPath>..\packages\HttpMultipartParser.2.1.6\lib\net40\HttpMultipartParser.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.CSharp">
       <RequiredTargetFramework>4.0</RequiredTargetFramework>
