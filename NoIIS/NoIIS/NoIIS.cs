@@ -25,7 +25,10 @@ namespace NoIIS
 		
 		// The assembly which contains your business logic:
 		private static string assembly = string.Empty;
-		
+
+        // A semaphore to control concurrent clients can be handled:
+        private static SemaphoreSlim semaphoreClients = new SemaphoreSlim(Environment.ProcessorCount * 4);
+
 		// All found handler factories of your assembly:
 		private static IHttpHandlerBaseFactory[] factories = new IHttpHandlerBaseFactory[0];
 		
@@ -99,7 +102,7 @@ namespace NoIIS
 		public static void runner()
 		{
 			// Set the min. number of threads for the thread-pool:
-			ThreadPool.SetMinThreads(100, 100);
+			ThreadPool.SetMinThreads(1000, 600);
 			
 			// The HTTP listener:
 			var listener = new HttpListener();
@@ -109,105 +112,119 @@ namespace NoIIS
 			
 			// Start listening:
 			listener.Start();
-			
+
 			// Loop forever:
 			while(true)
 			{
-				try
-				{
-					// Will wait for the next client request: 
-					var context = listener.GetContext();
-					
-					// Filter-out any requests which are to huge:
-					if(context.Request.ContentLength64 > NoIISServer.maxRequestSizeBytes)
-					{
-						Console.WriteLine("A request was to huge: {0} bytes.", context.Request.ContentLength64);
-						context.Response.Abort();
-						continue;
-					}
-					
-					// Any further step will be processed as own thread. This enables the web server
-					// to accept the next request.
-					Task.Run(() =>
-	                {
-					    // Copy the context in the thread:
-			         	var innerContext = context;
-			         	
-					    try
-					    {
-					    	// Create the NoIIS request:
-							var request = new NoIISRequest(innerContext, NoIISServer.tempFolder);
-							
-							// Create the NoIIS response:
-							var response = new NoIISResponse(innerContext);
-							
-							// Create the NoIIS context with request and response:
-							var webContext = new NoIISContext(request, response);
-							
-							// Search for a handler inside all factories which matches the request:
-							var foundHandler = false;
-							foreach(var factory in NoIISServer.factories)
-							{
-								// Does this factory is able to deliver a handler for this request?
-								var handler = factory.GetHandler(webContext, request.RequestType, request.Path, string.Empty);
-								
-								// Case: Yes, we have found the first handler:
-								if(handler != null)
-								{
-									// Let the handler process the request:
-									handler.ProcessRequest(webContext);
-									foundHandler = true;
-									
-									// We only use the first matching handler:
-									break;
-								}
-							}
-							
-							// Case: No handler was found
-							if(!foundHandler)
-							{
-								Console.WriteLine("No handler found for the URL '{0}'.", request.RawUrl);
-								response.StatusCode = 404;
-							}
-							
-							try
-							{
-								response.Dispose();
-							}
-							catch
-							{
-							}
-							
-							try
-							{
-								request.Dispose();
-							}
-							catch
-							{
-							}
-					    }
-					    catch(Exception e)
-					    {
-					    	Console.WriteLine("Exception while processing request: {0}", e.Message);
-					    	Console.WriteLine(e.StackTrace);
-					    	
-					    	try
-					    	{
-					    		innerContext.Response.Abort();
-					    	}
-					    	catch
-					    	{
-					    	}
-					    }
-					    
-	             	});
-				}
-				catch(Exception e)
-				{
-					Console.WriteLine("Exception while accepting request: {0}", e.Message);
-					Console.WriteLine(e.StackTrace);
-				}
+                try
+                {
+                    // Force a maximum number of concurrent clients:
+                    NoIISServer.semaphoreClients.Wait();
+
+                    // Start the new client thread:
+                    Task.Factory.StartNew(() => NoIISServer.clientThread(listener));
+                }
+                catch(Exception e)
+                {
+                    Console.WriteLine("There was an error for starting a client thread: " + e.Message);
+                    Console.WriteLine(e.StackTrace);
+                    NoIISServer.semaphoreClients.Release();
+                }
 	        }
 		}
+
+        private static async void clientThread(HttpListener listener)
+        {
+            try
+            {
+                // Will wait for the next client request:
+                var context = await listener.GetContextAsync();
+
+                // Filter-out any requests which are to huge:
+                if (context.Request.ContentLength64 > NoIISServer.maxRequestSizeBytes)
+                {
+                    Console.WriteLine("A request was to huge: {0} bytes.", context.Request.ContentLength64);
+                    context.Response.Abort();
+                    return;
+                }
+
+                try
+                {
+                    // Create the NoIIS request:
+                    var request = new NoIISRequest(context, NoIISServer.tempFolder);
+
+                    // Create the NoIIS response:
+                    var response = new NoIISResponse(context);
+
+                    // Create the NoIIS context with request and response:
+                    var webContext = new NoIISContext(request, response);
+
+                    // Search for a handler inside all factories which matches the request:
+                    var foundHandler = false;
+                    foreach (var factory in NoIISServer.factories)
+                    {
+                        // Does this factory is able to deliver a handler for this request?
+                        var handler = factory.GetHandler(webContext, request.RequestType, request.Path, string.Empty);
+
+                        // Case: Yes, we have found the first handler:
+                        if (handler != null)
+                        {
+                            // Let the handler process the request:
+                            handler.ProcessRequest(webContext);
+                            foundHandler = true;
+
+                            // We only use the first matching handler:
+                            break;
+                        }
+                    }
+
+                    // Case: No handler was found
+                    if (!foundHandler)
+                    {
+                        Console.WriteLine("No handler found for the URL '{0}'.", request.RawUrl);
+                        response.StatusCode = 404;
+                    }
+
+                    try
+                    {
+                        response.Dispose();
+                    }
+                    catch
+                    {
+                    }
+
+                    try
+                    {
+                        request.Dispose();
+                    }
+                    catch
+                    {
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("Exception while processing request: {0}", e.Message);
+                    Console.WriteLine(e.StackTrace);
+
+                    try
+                    {
+                        context.Response.Abort();
+                    }
+                    catch
+                    {
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+
+                Console.WriteLine("Exception while accepting request: {0}", e.Message);
+                Console.WriteLine(e.StackTrace);
+            }
+            finally
+            {
+                NoIISServer.semaphoreClients.Release();
+            }
+        }
 	}
 }
