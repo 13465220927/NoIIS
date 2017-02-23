@@ -38,6 +38,18 @@ namespace NoIIS
 
         // The visits of all known clients:
         private static ConcurrentDictionary<string, ConcurrentBag<byte>> clientVisits = new ConcurrentDictionary<string, ConcurrentBag<byte>>(Environment.ProcessorCount * 4, 1000);
+
+        // Minimal visits:
+        private static int visitsMinimum = 0;
+
+        // Maximal visits:
+        private static int visitsMaximum = 0;
+
+        // Entry-time:
+        private static int entryTimeSeconds = 0;
+
+        // Keep-alive time:
+        private static int keepAliveTimeSeconds = 0;
 		
 		/// <summary>
 		/// The entry point for the web server. Gets called after you start NoIIS.
@@ -45,13 +57,17 @@ namespace NoIIS
 		/// <param name="args">The parameters you give to NoIIS.</param>
 		public static void Main(string[] args)
 		{
-			if(args.Length < 4)
+			if(args.Length < 8)
 			{
 				Console.WriteLine("Please provide at least four arguments:");
 				Console.WriteLine("   1.  The assembly containing the handler factories e.g. 'my-app.dll'");
 				Console.WriteLine("   2.  The temp. folder for uploaded files as cache for the processing");
 				Console.WriteLine("   3.  The max. request size (bytes)");
-				Console.WriteLine("   4+. The prefix(es) for accepted request e.g. 'http://127.0.0.1:8080/' or 'http://*/test/*', etc.");
+                Console.WriteLine("   4.  The minimal visits of clients to prevent blocking. Use 0 to disable");
+                Console.WriteLine("   5.  The entry-time (seconds) wherein the client must gain the minimal visits");
+                Console.WriteLine("   6.  The maximal visits of clients before blocking. Use 0 to disable");
+                Console.WriteLine("   7.  The keep-alive time (seconds) before visits get deleted. Client can gain only max. visits within");
+				Console.WriteLine("   8+. The prefix(es) for accepted request e.g. 'http://127.0.0.1:8080/' or 'http://*/test/*', etc.");
 				Console.WriteLine();
 				return;
 			}
@@ -59,7 +75,11 @@ namespace NoIIS
 			NoIISServer.assembly = args[0].Trim();
 			NoIISServer.tempFolder = args[1].EndsWith(string.Empty + Path.DirectorySeparatorChar) ? args[1] : args[1] + Path.DirectorySeparatorChar;
 			NoIISServer.maxRequestSizeBytes = int.Parse(args[2]);
-			NoIISServer.hosts = args.Skip(3).ToArray();
+            NoIISServer.visitsMinimum = int.Parse(args[3]);
+            NoIISServer.entryTimeSeconds = int.Parse(args[4]);
+            NoIISServer.visitsMaximum = int.Parse(args[5]);
+            NoIISServer.keepAliveTimeSeconds = int.Parse(args[6]);
+			NoIISServer.hosts = args.Skip(7).ToArray();
 			NoIISServer.factories = FindHttpHandlerFactories.findFactories(NoIISServer.assembly);
 			NoIISServer.runner();
 		}
