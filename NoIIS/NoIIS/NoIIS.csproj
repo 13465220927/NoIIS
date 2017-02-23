@@ -80,6 +80,7 @@
     <Compile Include="IHttpHandlerBase.cs" />
     <Compile Include="IHttpHandlerBaseFactory.cs" />
     <Compile Include="NoIIS.cs" />
+    <Compile Include="Client.cs" />
     <Compile Include="NoIISContext.cs" />
     <Compile Include="NoIISFileCollection.cs" />
     <Compile Include="NoIISPostedFile.cs" />
