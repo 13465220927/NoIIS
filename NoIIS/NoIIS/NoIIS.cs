@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Net;
 using System.Threading;
@@ -31,6 +32,9 @@ namespace NoIIS
 
 		// All found handler factories of your assembly:
 		private static IHttpHandlerBaseFactory[] factories = new IHttpHandlerBaseFactory[0];
+
+        // The list of all known clients:
+        private static ConcurrentDictionary<string, Client> clients = new ConcurrentDictionary<string, Client>(Environment.ProcessorCount * 4, 1000);
 		
 		/// <summary>
 		/// The entry point for the web server. Gets called after you start NoIIS.
