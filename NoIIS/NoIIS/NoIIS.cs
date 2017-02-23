@@ -37,7 +37,7 @@ namespace NoIIS
         private static ConcurrentDictionary<string, Client> clients = new ConcurrentDictionary<string, Client>(Environment.ProcessorCount * 4, 1000);
 
         // The visits of all known clients:
-        private static ConcurrentDictionary<string, ConcurrentBag<byte>> clientVisits = new ConcurrentDictionary<string, ConcurrentBag<byte>>(Environment.ProcessorCount * 4, 1000);
+        private static ConcurrentDictionary<string, ConcurrentBag<DateTime>> clientVisits = new ConcurrentDictionary<string, ConcurrentBag<DateTime>>(Environment.ProcessorCount * 4, 1000);
 
         // Minimal visits:
         private static int visitsMinimum = 0;
@@ -215,7 +215,7 @@ namespace NoIIS
                 // File this visit. It is intended to do so after the block check.
                 // Otherwise, an attacker could use this fact to flood the memory
                 // with visits:
-                NoIISServer.clientVisits[clientAddress].Add(0);
+                NoIISServer.clientVisits[clientAddress].Add(DateTime.UtcNow);
                 clientProfile.LastVisitUTC = DateTime.UtcNow;
 
                 // Store the changed time. This could happens parallel with several
