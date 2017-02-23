@@ -35,6 +35,9 @@ namespace NoIIS
 
         // The list of all known clients:
         private static ConcurrentDictionary<string, Client> clients = new ConcurrentDictionary<string, Client>(Environment.ProcessorCount * 4, 1000);
+
+        // The visits of all known clients:
+        private static ConcurrentDictionary<string, ConcurrentBag<byte>> clientVisits = new ConcurrentDictionary<string, ConcurrentBag<byte>>(Environment.ProcessorCount * 4, 1000);
 		
 		/// <summary>
 		/// The entry point for the web server. Gets called after you start NoIIS.
@@ -152,6 +155,54 @@ namespace NoIIS
                     return;
                 }
 
+                // Read the client's address:
+                var clientAddress = context.Request.RemoteEndPoint.Address.ToString();
+
+                // Is this address known?
+                if(!NoIISServer.clients.ContainsKey(clientAddress)) {
+                    
+                    // Unknown:
+                    NoIISServer.createAndStoreClientProfile(clientAddress);
+                }
+
+                //
+                // In the meanwhile the maintenance thread could take action. Scenario: This client is known
+                // but was not visiting for the allowed time span. One moment after the previous check, the
+                // allowed time span expires and the maintenance thread deletes the entry. In such a case,
+                // an exception will be throwed. Is this the case, we add a new client profile. This is
+                // fine and a valid case.
+                //
+
+                Client clientProfile;
+                try {
+                    // Read the client's profile:
+                    clientProfile = NoIISServer.clients[clientAddress];
+                } catch (KeyNotFoundException) {
+                    // Valide case. Create a new entry:
+                    NoIISServer.createAndStoreClientProfile(clientAddress);
+
+                    // Read it again. It is not possible that the case occurs again:
+                    clientProfile = NoIISServer.clients[clientAddress];
+                }
+
+                // Is this client blocked?
+                if(clientProfile.Blocked) {
+                    Console.WriteLine("A blocked client tried to access: {0}.", clientAddress);
+                    context.Response.Abort();
+                    return;
+                }
+
+                // File this visit. It is intended to do so after the block check.
+                // Otherwise, an attacker could use this fact to flood the memory
+                // with visits:
+                NoIISServer.clientVisits[clientAddress].Add(0);
+                clientProfile.LastVisitUTC = DateTime.UtcNow;
+
+                // Store the changed time. This could happens parallel with several
+                // threads. Thus, it is not atomic. This behaviour is intended! Only
+                // the roughly time is necessary.
+                NoIISServer.clients[clientAddress] = clientProfile;
+
                 try
                 {
                     // Create the NoIIS request:
@@ -228,6 +279,29 @@ namespace NoIIS
             finally
             {
                 NoIISServer.semaphoreClients.Release();
+            }
+        }
+
+        /// Creates and stores a client profile as well as the bag for counting visits.
+        private static void createAndStoreClientProfile(string clientAddress) {
+            
+            // Create a new entry:
+            var client = new Client();
+            client.Address = clientAddress;
+            client.Blocked = false;
+            client.LastVisitUTC = DateTime.UtcNow;
+
+            // Store this entry. It is possible, that another thread was first.
+            // Thus, use a try-catch block.
+            try {
+                NoIISServer.clients[clientAddress] = client;
+            } catch {
+            }
+
+            // Create also the bag for counting visits:
+            try {
+                NoIISServer.clientVisits[clientAddress] = new ConcurrentBag<byte>();
+            } catch {
             }
         }
 	}

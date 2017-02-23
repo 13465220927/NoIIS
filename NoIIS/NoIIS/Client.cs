@@ -10,9 +10,6 @@ namespace NoIIS
     {
         /// The remote address of the client:
         public string Address;
-        
-        /// The amount of visits of this client:
-        public ulong Visits;
 
         /// Is this client blocked?
         public bool Blocked;
