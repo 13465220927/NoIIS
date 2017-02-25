@@ -37,7 +37,7 @@ namespace NoIIS
         private static ConcurrentDictionary<string, Client> clients = new ConcurrentDictionary<string, Client>(Environment.ProcessorCount * 4, 1000);
 
         // The visits of all known clients:
-        private static ConcurrentDictionary<string, ConcurrentBag<DateTime>> clientVisits = new ConcurrentDictionary<string, ConcurrentBag<DateTime>>(Environment.ProcessorCount * 4, 1000);
+        private static ConcurrentDictionary<string, ConcurrentQueue<DateTime>> clientVisits = new ConcurrentDictionary<string, ConcurrentQueue<DateTime>>(Environment.ProcessorCount * 4, 1000);
 
         // Minimal visits:
         private static int visitsMinimum = 0;
@@ -50,6 +50,12 @@ namespace NoIIS
 
         // Keep-alive time:
         private static int keepAliveTimeSeconds = 0;
+
+        // How long block a client?
+        private static int blockTimeSeconds = 0;
+
+        // How long keep client's record?
+        private static int clientLifeTimeSeconds = 0;
 		
 		/// <summary>
 		/// The entry point for the web server. Gets called after you start NoIIS.
@@ -60,14 +66,16 @@ namespace NoIIS
 			if(args.Length < 8)
 			{
 				Console.WriteLine("Please provide at least four arguments:");
-				Console.WriteLine("   1.  The assembly containing the handler factories e.g. 'my-app.dll'");
-				Console.WriteLine("   2.  The temp. folder for uploaded files as cache for the processing");
-				Console.WriteLine("   3.  The max. request size (bytes)");
-                Console.WriteLine("   4.  The minimal visits of clients to prevent blocking. Use 0 to disable");
-                Console.WriteLine("   5.  The entry-time (seconds) wherein the client must gain the minimal visits");
-                Console.WriteLine("   6.  The maximal visits of clients before blocking. Use 0 to disable");
-                Console.WriteLine("   7.  The keep-alive time (seconds) before visits get deleted. Client can gain only max. visits within");
-				Console.WriteLine("   8+. The prefix(es) for accepted request e.g. 'http://127.0.0.1:8080/' or 'http://*/test/*', etc.");
+				Console.WriteLine("   1.   The assembly containing the handler factories e.g. 'my-app.dll'");
+				Console.WriteLine("   2.   The temp. folder for uploaded files as cache for the processing");
+				Console.WriteLine("   3.   The max. request size (bytes)");
+                Console.WriteLine("   4.   The minimal visits of clients to prevent blocking. Use 0 to disable");
+                Console.WriteLine("   5.   The entry-time (seconds) wherein the client must gain the minimal visits");
+                Console.WriteLine("   6.   The maximal visits of clients before blocking. Use 0 to disable");
+                Console.WriteLine("   7.   The keep-alive time (seconds) before visits get deleted. Client can gain only max. visits within");
+                Console.WriteLine("   8.   The client's block time (seconds)");
+                Console.WriteLine("   9.   The client's profile life time (seconds)");
+				Console.WriteLine("   10+. The prefix(es) for accepted request e.g. 'http://127.0.0.1:8080/' or 'http://*/test/*', etc.");
 				Console.WriteLine();
 				return;
 			}
@@ -79,7 +87,9 @@ namespace NoIIS
             NoIISServer.entryTimeSeconds = int.Parse(args[4]);
             NoIISServer.visitsMaximum = int.Parse(args[5]);
             NoIISServer.keepAliveTimeSeconds = int.Parse(args[6]);
-			NoIISServer.hosts = args.Skip(7).ToArray();
+            NoIISServer.blockTimeSeconds = int.Parse(args[7]);
+            NoIISServer.clientLifeTimeSeconds = int.Parse(args[8]);
+			NoIISServer.hosts = args.Skip(9).ToArray();
 			NoIISServer.factories = FindHttpHandlerFactories.findFactories(NoIISServer.assembly);
 			NoIISServer.runner();
 		}
@@ -90,15 +100,29 @@ namespace NoIIS
 		/// <param name="factories">Your factories which provides all of your handlers. You must provide at least one factory in order to use NoIIS.</param>
 		/// <param name="tempFolderPath">The already existing temporary directory for e.g. file uploads, etc. If you use an empty string, the server will create a directory at the current working directory.</param>
 		/// <param name="maxRequestSizeBytes">The max. request size (bytes) for every request. This parameter limits e.g. file uploads. Default: approx. 5 MB</param>
+        /// <param name="visitsMinimum">The minimal visits of clients to prevent blocking. Use 0 to disable.</param>
+        /// <param name="entryTimeSeconds">he entry-time (seconds) wherein the client must gain the minimal visits.</param>
+        /// <param name="visitsMaximum">The maximal visits of clients before blocking. Use 0 to disable.</param>
+        /// <param name="keepAliveTimeSeconds">The keep-alive time (seconds) before visits get deleted. Client can gain only max. visits within.</param>
+        /// <param name="blockTimeSeconds">The client's block time (seconds).</param>
+        /// <param name="clientLifeTimeSeconds">The client's profile life time (seconds).</param>
 		/// <param name="host">The host and port where the web server will receive requests. Default: http://127.0.0.1:50000/</param>
 		/// <param name="hosts">Instead of using one host, you can provide here several hosts. If you use this parameter, NoIIS will ignore the host parameter.</param>
-		public static void setup(IEnumerable<IHttpHandlerBaseFactory> factories, string tempFolderPath = "", int maxRequestSizeBytes = 5000000, string host = "http://127.0.0.1:50000/", IEnumerable<string> hosts = null)
+		public static void setup(IEnumerable<IHttpHandlerBaseFactory> factories, string tempFolderPath = "", int maxRequestSizeBytes = 5000000, int visitsMinimum = 0, int entryTimeSeconds = 0, int visitsMaximum = 0, int keepAliveTimeSeconds = 0, int blockTimeSeconds = 0, int clientLifeTimeSeconds = 10, string host = "http://127.0.0.1:50000/", IEnumerable<string> hosts = null)
 		{
 			// Store the factories:
 			NoIISServer.factories = factories.ToArray();
 			
 			// Store the max. size:
 			NoIISServer.maxRequestSizeBytes = maxRequestSizeBytes;
+
+            // Store the blocking parameters:
+            NoIISServer.visitsMinimum = visitsMinimum;
+            NoIISServer.entryTimeSeconds = entryTimeSeconds;
+            NoIISServer.visitsMaximum = visitsMaximum;
+            NoIISServer.keepAliveTimeSeconds = keepAliveTimeSeconds;
+            NoIISServer.blockTimeSeconds = blockTimeSeconds;
+            NoIISServer.clientLifeTimeSeconds = clientLifeTimeSeconds;
 			
 			// Store the host or hosts:
 			NoIISServer.hosts = hosts != null ? hosts.ToArray() : new string[] { host };
@@ -130,6 +154,9 @@ namespace NoIIS
 		{
 			// Set the min. number of threads for the thread-pool:
 			ThreadPool.SetMinThreads(1000, 600);
+
+            // Start maintaining:
+            Task.Factory.StartNew(() => NoIISServer.maintenanceThread(), TaskCreationOptions.LongRunning);
 			
 			// The HTTP listener:
 			var listener = new HttpListener();
@@ -215,7 +242,7 @@ namespace NoIIS
                 // File this visit. It is intended to do so after the block check.
                 // Otherwise, an attacker could use this fact to flood the memory
                 // with visits:
-                NoIISServer.clientVisits[clientAddress].Add(DateTime.UtcNow);
+                NoIISServer.clientVisits[clientAddress].Enqueue(DateTime.UtcNow);
                 clientProfile.LastVisitUTC = DateTime.UtcNow;
 
                 // Store the changed time. This could happens parallel with several
@@ -301,6 +328,113 @@ namespace NoIIS
                 NoIISServer.semaphoreClients.Release();
             }
         }
+
+        ///
+        /// Keeps track of client acitivities e.g. minimal and maximal load, etc. This thread can block clients!
+        ///
+        private static async void maintenanceThread()
+        {
+            // Store the time span for life time:
+            var recordLifeSpan = TimeSpan.FromSeconds(NoIISServer.clientLifeTimeSeconds);
+
+            // Store block time span:
+            var blockSpan = TimeSpan.FromSeconds(NoIISServer.blockTimeSeconds);
+
+            // Store keep-alive time span:
+            var keepAliveSpan = TimeSpan.FromSeconds(NoIISServer.keepAliveTimeSeconds);
+
+            // Store entry-time span:
+            var entrySpan = TimeSpan.FromSeconds(NoIISServer.entryTimeSeconds);
+
+            // Work forever:
+            while(true) {
+
+                // Store current time once:
+                var now = DateTime.UtcNow;
+
+                try
+                {
+                    // Read all known keys:
+                    var currentlyKnownClients = NoIISServer.clients.Keys.ToArray();
+                    foreach(var clientKey in currentlyKnownClients) {
+                        
+                        // Read a client's profile:
+                        var clientProfile = NoIISServer.clients[clientKey];
+
+                        // Delete old visits of this client. We have to do this also for blocked clients to prevent memory leaks.
+                        var clientQueue = NoIISServer.clientVisits[clientKey];
+                        while(now > clientQueue.First() + keepAliveSpan) {
+                            DateTime deletedVisit;
+                            clientQueue.TryDequeue(out deletedVisit);
+                        }
+                        
+                        // Case 1: Client is blocked.
+                        if(clientProfile.Blocked) {
+
+                            // Case 1.1: The blockage is over.
+                            if(now > clientProfile.BlockedUntilUTC) {
+                                // Block time: Over. Toggle status and store it:
+                                clientProfile.Blocked = false;
+                                NoIISServer.clients[clientKey] = clientProfile;
+                                continue;
+                            }
+
+                            // Case 1.2: The client is still blocked! Do not perform any other check for blocked clients:
+                            continue;
+                        }
+
+                        // Case 2: Client record's life time is over.
+                        if(now > clientProfile.LastVisitUTC + recordLifeSpan) {
+                            
+                            // Delete this client's record:
+                            Client deletedProfile;
+                            NoIISServer.clients.TryRemove(clientKey, out deletedProfile);
+
+                            // Delete the client's queue:
+                            ConcurrentQueue<DateTime> deletedQueue;
+                            NoIISServer.clientVisits.TryRemove(clientKey, out deletedQueue);
+                            continue;
+                        }
+
+                        // Case 3: Check if client enters correct.
+                        if(NoIISServer.visitsMinimum > 0 && !clientProfile.Entered) {
+
+                            // Case 3.1: Success!
+                            if(NoIISServer.clientVisits[clientKey].Count() >= NoIISServer.visitsMinimum) {
+                                clientProfile.Entered = true;
+                                NoIISServer.clients[clientKey] = clientProfile;
+                                continue;
+                            }
+
+                            // Case 3.2: Timeout!
+                            if(now > NoIISServer.clientVisits[clientKey].First() + entrySpan) {
+                                // Time is out, block the client:
+                                clientProfile.Blocked = true;
+                                clientProfile.BlockedUntilUTC = now + blockSpan;
+                                NoIISServer.clients[clientKey] = clientProfile;
+                                continue;
+                            }
+                        }
+
+                        // Case 4: Check that the client does not exceed the maximal request.
+                        if(NoIISServer.visitsMaximum > 0) {
+                            // Case 4.1: The threshold is exceeded.
+                            if(NoIISServer.clientVisits[clientKey].Count() > NoIISServer.visitsMaximum) {
+                                clientProfile.Blocked = true;
+                                clientProfile.BlockedUntilUTC = now + blockSpan;
+                                NoIISServer.clients[clientKey] = clientProfile;
+                                continue;
+                            }
+                        }
+                    }
+                }
+                catch {   
+                }
+
+                Thread.Sleep(TimeSpan.FromSeconds(1));
+            }
+        }
+
 
         /// Creates and stores a client profile as well as the bag for counting visits.
         private static void createAndStoreClientProfile(string clientAddress) {
