@@ -4,6 +4,23 @@ NoIIS is a lightweight C# web server for the `IHttpHandlerFactory` and `IHttpHan
 ## Get NoIIS
 The fasted way is to use NoIIS from NuGet: https://www.nuget.org/packages/NoIIS/.
 
+## Configuration
+The correct configuration is important in order to guarantee a successful performance.
+
+1. The temporary folder is important because NoIIS stores the requests there. These could contain attached files or form data.
+2. The `maxRequestSizeBytes` parameter sets the maximal length of the request. This includes any uploaded files and form data. Any request which is larger gets rejected.
+3. The `visitsMinimum` parameter defines how many requests a client must perform within `entryTimeSeconds` in order to get not blocked. Set the `visitsMinimum` to `0` to disable this function.
+4. The `visitsMaximum` parameter defines how many requests a client can perform within `keepAliveTimeSeconds` in order to get now blocked. Set the `visitsMaximum` to `0` to disable this function.
+5. The `blockTimeSeconds` parameter defines how long a client gets blocked.
+6. The `clientLifeTimeSeconds` parameter defines how long NoIIS keeps track of a client's profile and status. It gets measured after the last client's visit.
+
+In order to work properly, the following rule should applied:
+- `entryTimeSeconds` < `keepAliveTimeSeconds` in order to allow NoIIS to keep trach of all entry requests.
+- `blockTimeSeconds` < `clientLifeTimeSeconds` in order to guarantee the desired blocking time.
+- `entryTimeSeconds` < `clientLifeTimeSeconds` in order to allow the desired blocking algorithm to work.
+- `clientLifeTimeSeconds` < `24h` because many customers's IP address gets changed after one day. Thus, a further control is not possible.
+- `visitsMinimum` < `visitsMaximum` otherwise each client gets blocked.
+
 ## Limits
 NoIIS is not yet a full replacement for an ISS. The following properties of the `HttpRequestBase` class are not yet implemented:
 * AnonymousID
