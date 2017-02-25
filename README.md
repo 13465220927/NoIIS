@@ -21,6 +21,16 @@ In order to work properly, the following rule should applied:
 - `clientLifeTimeSeconds` < `24h` because many customers's IP address gets changed after one day. Thus, a further control is not possible.
 - `visitsMinimum` < `visitsMaximum` otherwise each client gets blocked.
 
+One example regarding the blocking function:
+- `visitsMinimum=6`
+- `entryTimeSeconds=30` i.e. 1/2 minute
+- `visitsMaximum=200`
+- `keepAliveTimeSeconds=120` i.e. 2 minutes
+- `blockTimeSeconds=300` i.e. 5 minutes
+- `clientLifeTimeSeconds=900` i.e. 15 minutes
+
+Now, any client must perform at least `6` request at the first `1/2` minute. Otherwise, the client get blocked. After successfully do so, the client cannot perform more than `200` requests at any time over the last `2` minutes. Otherwise, it gets blocked. A blocked client gets ignored for `5` minutes. If a client goes offline, NoIIS keep track of the last status for `15` minutes.
+
 ## Limits
 NoIIS is not yet a full replacement for an ISS. The following properties of the `HttpRequestBase` class are not yet implemented:
 * AnonymousID
