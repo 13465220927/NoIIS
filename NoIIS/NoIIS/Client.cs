@@ -19,5 +19,8 @@ namespace NoIIS
         
         /// If this client was blocked, how long?
         public DateTime BlockedUntilUTC;
+
+        /// Is this client entered i.e. was the entry successful?
+        public bool Entered;
     }
 }
